@@ -58,7 +58,7 @@ Follow these steps to configure and use CleverCaption with OOBA BOOGA WebUI and 
 - Set up the OOBA BOOGA WebUI from its [GitHub repository](https://github.com/oobabooga/text-generation-webui).
 - Run OOBA BOOGA with the multimodal model using the following switches:
   ```
-  --multimodal-pipeline llava-llama-2-13b --extensions multimodal
+  --multimodal-pipeline llava-llama-2-13b --extensions multimodal --api
   ```
 
 ### Step 2: LLAVA Model Configuration
