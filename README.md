@@ -49,6 +49,8 @@ To use CleverCaption, follow these steps:
 
 3. The progress of the captioning process can be monitored through the GUI that pops up.
 
+For best results I recommend modifying the `prompt` and `caption_start_template` in `config.json` to suit your needs.
+
 ## oobabooga text-generation-webui
 
 Follow these steps to configure and use CleverCaption with OOBA BOOGA WebUI and the LLAVA multimodal model:
@@ -69,6 +71,16 @@ Follow these steps to configure and use CleverCaption with OOBA BOOGA WebUI and 
 ---
 
 Ensure all configurations are set before running the tool. The instructions above should work alongside the provided CleverCaption documentation and OOBA BOOGA's guidelines.
+
+## TODO
+
+- Devise a best method to allow multi-processing (ooba bottleneck)
+- Update UI
+- Update Console Logging
+- Single Folder Mode
+- Enhance and document runtime text replacement (folder in prompt, image name in prompt and caption start)
+- Processing Character and Details, and concept text files for increased information.
+- Semi - automatic Character Tagging Module.
 
 ## Contribution
 
