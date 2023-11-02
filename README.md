@@ -21,21 +21,22 @@ Before you begin, ensure you have met the following requirements:
   - Pillow
   - httpx
   - asyncio
-  - tkinter
 
 ## Installation
 
-To install CleverCaption, follow these steps:
+If conda is installed simply run the **install.bat** to create a conda environment.
+
+To install CleverCaption manually, follow these steps:
 
 1. Clone or download the repository to your local machine.
 2. Use pip to install the necessary packages:
    ```sh
-   pip install requests Pillow httpx asyncio tkinter
+   pip install requests Pillow httpx asyncio
    ```
-   
-Alternatively if conda is installed simply run the install.bat to create a conda environment.
 
 ## Usage
+
+If using the conda install method, simply double-click **run.bat**.
 
 To use CleverCaption, follow these steps:
 
@@ -47,8 +48,6 @@ To use CleverCaption, follow these steps:
    If you don't provide a folder path, a GUI will prompt you to select a folder.
 
 3. The progress of the captioning process can be monitored through the GUI that pops up.
-
-Alternatively if using the conda install method, simply double-click run.bat.
 
 ## oobabooga text-generation-webui
 
