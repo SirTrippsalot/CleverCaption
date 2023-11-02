@@ -59,6 +59,7 @@ Follow these steps to configure and use CleverCaption with OOBA BOOGA WebUI and 
   ```
   --multimodal-pipeline llava-llama-2-13b --extensions multimodal --api
   ```
+  If using the ooba 1-click install/run the flags can be added to `text-generation-webui\CMD_FLAGS.txt`
 
 ### Step 2: LLAVA Model Configuration
 - Access the LLAVA model on [Hugging Face](https://huggingface.co/liuhaotian/llava-v1.5-13b).
