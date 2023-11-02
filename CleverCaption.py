@@ -37,6 +37,8 @@ progress_data = {
 async def process_folder(folder_path, payload, semaphore, update_queue):
     file_names = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
     for file in file_names:
+        if shutdown_flag.is_set():
+            break
         image_path = os.path.join(folder_path, file)
         await run(payload, image_path, os.path.basename(folder_path), semaphore, update_queue, folder_path)
     progress_data['folders_completed'] += 1
@@ -92,21 +94,23 @@ def save_result_to_file(image_path, result):
 async def run(payload, image_path, folder_name, semaphore, update_queue, folder_path):
     async with semaphore:
         this_payload = payload.copy()
-        caption_start = caption_start_template.replace('@folder_name', folder_name)
+
+        image_name = os.path.splitext(os.path.basename(image_path))[0]
+        caption_start = caption_start_template.replace('@folder_name', folder_name).replace('@image_name', image_name)
+        
         base64_image = image_to_base64(image_path)
         photodescription = f'<img src="data:image/jpeg;base64,{base64_image}">'
         
-        this_payload['prompt'] = photodescription + "\n" + payload['prompt'] + caption_start
+        this_payload['prompt'] = photodescription + "\n" + payload['prompt'].replace('@folder_name', folder_name).replace('@image_name', image_name) + caption_start
 
         timeout = httpx.Timeout(httpx_timeout_value)
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(URI, json=this_payload)
 
-
         if response.status_code == 200:
             result = response.json()['results'][0]['text'].strip()
             save_result_to_file(image_path, caption_start+result)
-            print(caption_start+result)
+            print("\n", image_path, "\n", caption_start+result)
             progress_data['items_processed'] += 1
             progress_data['items_processed_current_folder'] += 1
             progress_data['last_processed_file'] = image_path
@@ -144,20 +148,25 @@ if __name__ == '__main__':
     total_files, total_folders, folder_image_counts = count_files_and_folders(master_folder_path)
     print("Total image files:", total_files)
     print("Total folders with images:", total_folders)
-    print("Folders with image counts:", folder_image_counts)
     progressBar = ProgressBarApp(total_files, total_folders, folder_image_counts)
 
     update_queue = asyncio.Queue()
-
     all_tasks_done = threading.Event()
+    shutdown_flag = threading.Event()
 
     def start_async_processing():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(run_async_folders(folder_image_counts, API_Payload, semaphore, update_queue))
-        loop.run_until_complete(update_queue.join())
-        all_tasks_done.set()
-        loop.close()
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(run_async_folders(folder_image_counts, API_Payload, semaphore, update_queue))
+            loop.run_until_complete(update_queue.join())
+        except KeyboardInterrupt:
+            print("Caught keyboard interrupt. Shutting down.")
+            shutdown_flag.set()
+        finally:
+            loop.close()
+            all_tasks_done.set()
+            progressBar.close()
 
     processing_thread = threading.Thread(target=start_async_processing)
     processing_thread.start()

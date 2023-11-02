@@ -78,7 +78,7 @@ Ensure all configurations are set before running the tool. The instructions abov
 - Update UI
 - Update Console Logging
 - Single Folder Mode
-- Enhance and document runtime text replacement (folder in prompt, image name in prompt and caption start)
+- ~~Enhance and document runtime text replacement (folder in prompt, image name in prompt and caption start)~~
 - Processing Character and Details, and concept text files for increased information.
 - Semi - automatic Character Tagging Module.
 
