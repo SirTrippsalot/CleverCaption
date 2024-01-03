@@ -45,9 +45,11 @@ class ProgressBarApp:
         self.last_processed_file_label = tk.Label(self.root, text="Last Processed File: None")
         self.last_processed_file_label.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
-
     def close(self):
-        self.root.destroy()
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass  
 
     def stop_now(self):
         self.stop_immediately = True

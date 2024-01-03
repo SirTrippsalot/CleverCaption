@@ -15,14 +15,20 @@ import json
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
 
-HOST = config['HOST']
-URI = config['URI_template'].format(HOST=HOST)
-max_image_size = config['max_image_size']
-caption_start_template = config['caption_start_template']
-max_concurrent_requests = config['max_concurrent_requests']
-httpx_timeout_value = config['httpx_timeout']
-API_Payload = config['API_Payload']
-API_Payload['prompt'] = '\n'.join(API_Payload['prompt'])
+api_model = config.get('model', 'ooba')
+api_key = config.get('key', '')
+HOST = config.get('HOST', '')
+URI = config.get('URI_template', '').format(HOST=HOST, model=api_model, API_KEY=api_key)
+max_image_size = config.get('max_image_size', 1024)
+caption_start_template = config.get('caption_start_template', '')
+max_concurrent_requests = config.get('max_concurrent_requests', 1)
+httpx_timeout_value = config.get('httpx_timeout', 120.0)
+
+API_Payload = config.get('API_Payload', {})
+if 'prompt' in API_Payload:
+    API_Payload['prompt'] = '\n'.join(API_Payload['prompt'])
+else:
+    pass
 
 semaphore = asyncio.Semaphore(max_concurrent_requests)
 
@@ -46,10 +52,17 @@ async def process_folder(folder_path, payload, semaphore, update_queue):
 async def run_async_folders(folder_image_counts, payload, semaphore, update_queue):
     for folder, _ in folder_image_counts.items():
         await process_folder(folder, payload, semaphore, update_queue)
+
     
 def count_files_and_folders(master_folder):
     folder_image_counts = {}
     
+    # Check for image files directly in the master folder
+    image_count_in_master = sum(1 for item in os.listdir(master_folder) if item.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')))
+    if image_count_in_master > 0:
+        folder_image_counts[master_folder] = image_count_in_master
+
+    # Continue with checking subfolders
     subfolders = [f.path for f in os.scandir(master_folder) if f.is_dir()]
     for folder in subfolders:
         image_count = sum(1 for item in os.listdir(folder) if item.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')))
@@ -61,6 +74,7 @@ def count_files_and_folders(master_folder):
     total_files = sum(folder_image_counts.values())
 
     return total_files, total_folders, folder_image_counts
+
 
 def image_to_base64(image_path):
     img = Image.open(image_path)
@@ -93,31 +107,76 @@ def save_result_to_file(image_path, result):
 
 async def run(payload, image_path, folder_name, semaphore, update_queue, folder_path):
     async with semaphore:
-        this_payload = payload.copy()
+        # Extract the base payload template
+        base_payload = config['API_Payload']
 
-        image_name = os.path.splitext(os.path.basename(image_path))[0]
-        caption_start = caption_start_template.replace('@folder_name', folder_name).replace('@image_name', image_name)
-        
+        # Update the text part of the payload
+        text_parts = base_payload['contents'][0]['parts'][0]['text']
+        joined_text = '\n'.join(text_parts).replace('@folder_name', folder_name).replace('@image_name', os.path.splitext(os.path.basename(image_path))[0])
+        base_payload['contents'][0]['parts'][0]['text'] = joined_text
+
+        # Prepare and update the image data
+        # Prepare the image data
         base64_image = image_to_base64(image_path)
-        photodescription = f'<img src="data:image/jpeg;base64,{base64_image}">'
+        mimeType = 'image/jpeg'  # or 'image/png' depending on your image format
+
+        # Extract the base payload template and update the inline data
+        base_payload = config['API_Payload']
+        base_payload['contents'][0]['parts'][1]['inlineData']['mimeType'] = mimeType
+        base_payload['contents'][0]['parts'][1]['inlineData']['data'] = base64_image
         
-        this_payload['prompt'] = photodescription + "\n" + payload['prompt'].replace('@folder_name', folder_name).replace('@image_name', image_name) + caption_start
+        # print(URI)
+        # print(json.dumps(base_payload, indent=4))
 
-        timeout = httpx.Timeout(httpx_timeout_value)
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(URI, json=this_payload)
+        
+        if api_model == 'gemini-pro-vision':        
+            # Add Authorization header
+            headers = {
+                'Content-Type': 'application/json'
+            }
 
-        if response.status_code == 200:
-            result = response.json()['results'][0]['text'].strip()
-            save_result_to_file(image_path, caption_start+result)
-            print("\n", image_path, "\n", caption_start+result)
-            progress_data['items_processed'] += 1
-            progress_data['items_processed_current_folder'] += 1
-            progress_data['last_processed_file'] = image_path
-            if progress_data['current_folder'] != folder_path:
-                progress_data['current_folder'] = folder_path
-                progress_data['items_processed_current_folder'] = 1
-            progressBar.update_progress_data(progress_data, folder_image_counts)
+            # Make the POST request
+            timeout = httpx.Timeout(httpx_timeout_value)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(URI, headers=headers, json=base_payload)
+
+            # Process the response
+            if response.status_code == 200:
+                result = response.json()
+                result_text = result['candidates'][0]['content']['parts'][0]['text']
+                save_result_to_file(image_path, result_text)
+                print("\n", image_path, "\n", result_text)
+            else:
+                print(f"Error: {response.status_code} - {response.text}")
+
+
+        elif api_model == 'ooba':
+            this_payload = payload.copy()
+
+            image_name = os.path.splitext(os.path.basename(image_path))[0]
+            caption_start = caption_start_template.replace('@folder_name', folder_name).replace('@image_name', image_name)
+            
+            base64_image = image_to_base64(image_path)
+            photodescription = f'<img src="data:image/jpeg;base64,{base64_image}">'
+            
+            this_payload['prompt'] = photodescription + "\n" + payload['prompt'].replace('@folder_name', folder_name).replace('@image_name', image_name) + caption_start
+
+            timeout = httpx.Timeout(httpx_timeout_value)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(URI, json=this_payload)
+
+            if response.status_code == 200:
+                result = response.json()['results'][0]['text'].strip()
+                save_result_to_file(image_path, caption_start+result)
+                print("\n", image_path, "\n", caption_start+result)
+                progress_data['items_processed'] += 1
+                progress_data['items_processed_current_folder'] += 1
+                progress_data['last_processed_file'] = image_path
+                if progress_data['current_folder'] != folder_path:
+                    progress_data['current_folder'] = folder_path
+                    progress_data['items_processed_current_folder'] = 1
+                progressBar.update_progress_data(progress_data, folder_image_counts)
+                pass
 
 def get_folder_from_gui():
     root = tk.Tk()

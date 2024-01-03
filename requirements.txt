@@ -1,0 +1,5 @@
+httpx
+Pillow
+google-generativeai
+langchain-google-genai
+streamlit

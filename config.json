@@ -1,58 +1,62 @@
 {
+    "model":"gemini-pro-vision",
+    "HOST": "generativelanguage.googleapis.com",
+    "URI_template": "https://{HOST}/v1beta/models/{model}:generateContent?key={API_KEY}",
+    "key": "AIzaSyCqlmego6plrMkqYu1hCJYHGQwWMplkRMA",
     "_note_for_users": "Below please find the various app and API settings used by the program. Of note is the caption_start_template amd prompt. For either of these you can use replacement terms that will be proceesed at runtime. Currently supported are: @folder_name and @image_name.",
-	"HOST": "localhost:5000",
-    "URI_template": "http://{HOST}/api/v1/generate",
     "max_image_size": 1024,
-    "caption_start_template": "A photo of @folder_name. ",
+    "caption_start_template": "An image of @folder_name. ",
     "max_concurrent_requests": 1,
     "httpx_timeout": 120.0,
     "API_Payload": {
-        "prompt": [
-            "[Instructions: Craft a succinct, vibrant depiction of the image, weaving complex syntax into a tapestry of detailed yet terse statements. Include one elaborate sentence for the focal subject, another for the backdrop, and a final one for the visual composition.",
-			"Guidelines:",
-			"1) Strive for a rich, conversational narrative that captivates without overwhelming, tailored to the image's intricacy.",
-			"2) Specify gender and age when evident, prioritizing detail.",
-			"3) Restrict comments to the observable, articulating each detail's significance without hypothesizing beyond the frame, to maintain descriptive integrity.",
-			"4) Accentuate the aesthetic elements—composition, lighting, tone—attentive to nuances like chromatic backdrop, rotoscoping, and manifest edits. Note image color-tone and chroma dynamics where pertinent.",
-			"5) Elucidate the subject's posture and defining traits with the specificity a sketch artist would require, detailing tattoos, clothing, physical nuances, and distinguishing features.",
-			"6) Employ complex sentence structures for concise, multi-layered descriptions, enhancing the image's narrative with refined grammar and lexicon.",
-			"7) Be sure to caption in quotes any prominent text displayed.",
-			"Examples:",
-			"1) An instagram photo from Terra Miller portrays a youthful skater, poised in mid-trick, animates the foreground, his form casting an elongated shadow in the waning sunlight; His brown shirt emblazoned with the word \"Dude\", and black pants hanging low showing his heart adorned boxers. Behind him, a mural splashes vibrant hues across the urban canvas, its summer vibrancy set against the encroaching dusk.",
-			"2) A painting by Yahtzee Claw depicting a woman's determined gaze, cloaked in a robe of deep crimson, emanating from the sanctuary of shadows; the dim ambiance of the secluded room whispers tales of secrecy, illuminated by the subtle interplay of light and shadow that sculpts her form.",
-			"3) An artistic photo by Anonymous. Against the tapestry of twilight, a serene shore welcomes the evening tide, its sands inscribed with the day's final footprints; the horizon marries the blaze of the setting sun with the cool onset of night, creating a harmonious color gradient that beckons contemplation.",
-			"4) An edited photo defined by a precise rotoscope cut, a woman's silhouette stands in stark relief against a sheer white backdrop; the interplay of light and shadow contours her visage and simple black top, capturing the essence of her expression in a minimalist but telling vignette.",
-			"Accuracy and visual fidelity are essential, ensuring the caption enables an artist's precise reimagining of the scene.",
-			"Considering these directives, complete the following caption:]\n"
-		],
-        "max_new_tokens": 200,
-        "temperature": 0.85,
-        "typical_p": 1,
-        "repetition_penalty": 1.15,
-        "repetition_penalty_range": 0,
-        "encoder_repetition_penalty": 1,
-        "top_k": 90,
-        "min_length": 0,
-        "no_repeat_ngram_size": 0,
-        "num_beams": 1,
-        "length_penalty": 1,
-        "early_stopping": false,
-        "guidance_scale": 1.35,
-        "negative_prompt": "Aim for a tone that is mechanical, robotic, and stilted. Use simple sentences without mentioning cultural significance or image themes. Talk about the camera. Assume things are murals. Black and white.",
-        "penalty_alpha": 0,
-        "mirostat_mode": 0,
-        "mirostat_tau": 5,
-        "mirostat_eta": 0.1,
-        "do_sample": false,
-        "seed": -1,
-        "truncation_length": 4096,
-        "ban_eos_token": false,
-        "skip_special_tokens": true,
-        "top_a": 0,
-        "tfs": 0.85,
-        "epsilon_cutoff": 0,
-        "eta_cutoff": 0,
-        "grammar_string": "",
-        "custom_token_bans": ""
+        "contents": [
+            {
+                "role": "user",
+                "parts":[
+                    {
+                        "text": [
+                            "Instructions: Craft a short caption for training a text-to-image model.",
+                            "1) Keep things token efficient, focusing on only what is in the image.",
+                            "2) If the subject is a known person/character name them.",
+                            "3) For outfits, keep it simple focusing on the type and properties of the clothing (sheer, shiny, etc).",
+                            "4) The type of image matters (3d render, anime, photo, painting, etc) try to be specific and concise.",
+                            "5) If this is a known piece, include the artist.",
+                            "Example: a screencap of person doing things wearing outfit."
+                        ]
+                    },
+                    {
+                        "inlineData": {
+                            "mimeType": "@mimeType", 
+                            "data": "@base64Data"
+                        }
+                    }
+                ]
+            }
+        ],
+        "safetySettings": [
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+            }
+        ],
+        "generationConfig": {
+            "stopSequences": [],
+            "temperature": 0.4,
+            "maxOutputTokens": 1024,
+            "topP": 1,
+            "topK": 32
+        }
     }
 }
