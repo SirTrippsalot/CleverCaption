@@ -22,7 +22,8 @@ caption_start_template = config['caption_start_template']
 max_concurrent_requests = config['max_concurrent_requests']
 httpx_timeout_value = config['httpx_timeout']
 API_Payload = config['API_Payload']
-API_Payload['prompt'] = '\n'.join(API_Payload['prompt'])
+prompt_template = '\n'.join(API_Payload['prompt'])
+del API_Payload['prompt']
 
 semaphore = asyncio.Semaphore(max_concurrent_requests)
 
@@ -97,18 +98,25 @@ async def run(payload, image_path, folder_name, semaphore, update_queue, folder_
 
         image_name = os.path.splitext(os.path.basename(image_path))[0]
         caption_start = caption_start_template.replace('@folder_name', folder_name).replace('@image_name', image_name)
+        prompt = prompt_template.replace("@folder_name", folder_name).replace("@image_name", image_name)
         
         base64_image = image_to_base64(image_path)
-        photodescription = f'<img src="data:image/jpeg;base64,{base64_image}">'
-        
-        this_payload['prompt'] = photodescription + "\n" + payload['prompt'].replace('@folder_name', folder_name).replace('@image_name', image_name) + caption_start
-
+        this_payload["messages"] = [
+            {
+                "role": "user",
+                "image_url": f"data:image/jpeg;base64,{base64_image}"
+            },
+            {
+                "role": "user",
+                "content": prompt + caption_start,
+            },
+        ]
         timeout = httpx.Timeout(httpx_timeout_value)
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(URI, json=this_payload)
 
         if response.status_code == 200:
-            result = response.json()['results'][0]['text'].strip()
+            result = response.json()["choices"][0]["message"]["content"].strip()
             save_result_to_file(image_path, caption_start+result)
             print("\n", image_path, "\n", caption_start+result)
             progress_data['items_processed'] += 1

@@ -1,7 +1,7 @@
 {
     "_note_for_users": "Below please find the various app and API settings used by the program. Of note is the caption_start_template amd prompt. For either of these you can use replacement terms that will be proceesed at runtime. Currently supported are: @folder_name and @image_name.",
 	"HOST": "localhost:5000",
-    "URI_template": "http://{HOST}/api/v1/generate",
+    "URI_template": "http://{HOST}/v1/chat/completions",
     "max_image_size": 1024,
     "caption_start_template": "A photo of @folder_name. ",
     "max_concurrent_requests": 1,
@@ -25,7 +25,7 @@
 			"Accuracy and visual fidelity are essential, ensuring the caption enables an artist's precise reimagining of the scene.",
 			"Considering these directives, complete the following caption:]\n"
 		],
-        "max_new_tokens": 200,
+        "max_tokens": 200,
         "temperature": 0.85,
         "typical_p": 1,
         "repetition_penalty": 1.15,
