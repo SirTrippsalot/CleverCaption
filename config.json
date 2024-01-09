@@ -26,6 +26,7 @@
 			"Considering these directives, complete the following caption:]\n"
 		],
         "max_tokens": 200,
+        "mode": "instruct",
         "temperature": 0.85,
         "typical_p": 1,
         "repetition_penalty": 1.15,
