@@ -11,6 +11,9 @@ import asyncio
 import threading
 from UI_Progress import ProgressBarApp
 import json
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.generation import GenerationConfig
+import torch
 
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
@@ -40,6 +43,13 @@ progress_data = {
     'last_processed_file': ''
 }
 
+def load_qwen_model():
+    torch.manual_seed(1234)
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL-Chat", trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL-Chat", device_map="cuda", trust_remote_code=True).eval()
+    model.generation_config = GenerationConfig.from_pretrained("Qwen/Qwen-VL-Chat", trust_remote_code=True)
+    return model, tokenizer
+
 async def process_folder(folder_path, payload, semaphore, update_queue):
     file_names = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
     for file in file_names:
@@ -53,6 +63,27 @@ async def run_async_folders(folder_image_counts, payload, semaphore, update_queu
     for folder, _ in folder_image_counts.items():
         await process_folder(folder, payload, semaphore, update_queue)
 
+async def process_image_qwen(image_path, model, tokenizer, prompt_template, caption_start_template):
+    image_name = os.path.splitext(os.path.basename(image_path))[0]
+    folder_name = os.path.basename(os.path.dirname(image_path))
+
+    # Join prompt template if it's an array
+    if isinstance(prompt_template, list):
+        prompt_template = ' '.join(prompt_template)
+
+    # Apply replacements
+    caption_start = caption_start_template.replace('@folder_name', folder_name).replace('@image_name', image_name)
+    prompt_text = prompt_template.replace('@folder_name', folder_name).replace('@image_name', image_name) + caption_start
+
+    with open(image_path, 'rb') as image_file:
+        # Convert image to base64
+        base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        query = tokenizer.from_list_format([
+            {'image': base64_image},  # Pass base64 encoded image
+            {'text': prompt_text},
+        ])
+        response, history = model.chat(tokenizer, query=query, history=None)
+        return response
     
 def count_files_and_folders(master_folder):
     folder_image_counts = {}
@@ -107,29 +138,58 @@ def save_result_to_file(image_path, result):
 
 async def run(payload, image_path, folder_name, semaphore, update_queue, folder_path):
     async with semaphore:
-        # Extract the base payload template
-        base_payload = config['API_Payload']
 
-        # Update the text part of the payload
-        text_parts = base_payload['contents'][0]['parts'][0]['text']
-        joined_text = '\n'.join(text_parts).replace('@folder_name', folder_name).replace('@image_name', os.path.splitext(os.path.basename(image_path))[0])
-        base_payload['contents'][0]['parts'][0]['text'] = joined_text
 
-        # Prepare and update the image data
-        # Prepare the image data
-        base64_image = image_to_base64(image_path)
-        mimeType = 'image/jpeg'  # or 'image/png' depending on your image format
+        if api_model == 'qwen':
+            model, tokenizer = load_qwen_model()
 
-        # Extract the base payload template and update the inline data
-        base_payload = config['API_Payload']
-        base_payload['contents'][0]['parts'][1]['inlineData']['mimeType'] = mimeType
-        base_payload['contents'][0]['parts'][1]['inlineData']['data'] = base64_image
+            # Extract prompt template and caption_start from payload configuration
+            prompt_template = config['API_Payload']['prompt']
+            caption_start_template = config.get('caption_start_template', '')
+
+            # Process image with Qwen-VL
+            response = await process_image_qwen(image_path, model, tokenizer, prompt_template, caption_start_template)
+
+            # Handle the response similarly to how ooba's responses are handled
+            if response:  # Assuming response contains the text information you need
+                result_text = response  # Modify this based on how Qwen-VL response is structured
+                save_result_to_file(image_path, result_text)
+                print("\n", image_path, "\n", result_text)
+            else:
+                print(f"No response for {image_path}")
+
+            # Update progress data, similar to ooba handling
+            progress_data['items_processed'] += 1
+            progress_data['items_processed_current_folder'] += 1
+            progress_data['last_processed_file'] = image_path
+            if progress_data['current_folder'] != folder_path:
+                progress_data['current_folder'] = folder_path
+                progress_data['items_processed_current_folder'] = 1
+            progressBar.update_progress_data(progress_data, folder_image_counts)
         
-        # print(URI)
-        # print(json.dumps(base_payload, indent=4))
+        elif api_model == 'gemini-pro-vision':    
+            # Extract the base payload template
+            base_payload = config['API_Payload']
+
+            # Update the text part of the payload
+            text_parts = base_payload['contents'][0]['parts'][0]['text']
+            joined_text = '\n'.join(text_parts).replace('@folder_name', folder_name).replace('@image_name', os.path.splitext(os.path.basename(image_path))[0])
+            base_payload['contents'][0]['parts'][0]['text'] = joined_text
+
+            # Prepare and update the image data
+            # Prepare the image data
+            base64_image = image_to_base64(image_path)
+            mimeType = 'image/jpeg'  # or 'image/png' depending on your image format
+
+            # Extract the base payload template and update the inline data
+            base_payload = config['API_Payload']
+            base_payload['contents'][0]['parts'][1]['inlineData']['mimeType'] = mimeType
+            base_payload['contents'][0]['parts'][1]['inlineData']['data'] = base64_image
+            
+            # print(URI)
+            # print(json.dumps(base_payload, indent=4))
 
         
-        if api_model == 'gemini-pro-vision':        
             # Add Authorization header
             headers = {
                 'Content-Type': 'application/json'
