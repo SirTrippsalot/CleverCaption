@@ -1,3 +1,6 @@
+torch==2.1.2+cu118
+torchvision==0.16.2+cu118
+torchaudio==2.1.2
 httpx
 Pillow
 streamlit
@@ -7,7 +10,6 @@ tiktoken
 einops
 transformers_stream_generator==0.0.4
 scipy
-torchvision
 pillow
 tensorboard
 matplotlib
