@@ -8,21 +8,22 @@
     "caption_start_template": "An image of @folder_name. ",
     "max_concurrent_requests": 1,
     "httpx_timeout": 120.0,
+	"prompt": [
+		"Instructions: Craft a short caption for training a text-to-image model.",
+		"1) Keep things token efficient, focusing on only what is in the image.",
+		"2) If the subject is a known person/character name them.",
+		"3) For outfits, keep it simple focusing on the type and properties of the clothing (sheer, shiny, etc).",
+		"4) The type of image matters (3d render, anime, photo, painting, etc) try to be specific and concise.",
+		"5) If this is a known piece, include the artist.",
+		"Example: a screencap of person doing things wearing outfit."
+	]
     "API_Payload": {
         "contents": [
             {
                 "role": "user",
                 "parts":[
                     {
-                        "text": [
-                            "Instructions: Craft a short caption for training a text-to-image model.",
-                            "1) Keep things token efficient, focusing on only what is in the image.",
-                            "2) If the subject is a known person/character name them.",
-                            "3) For outfits, keep it simple focusing on the type and properties of the clothing (sheer, shiny, etc).",
-                            "4) The type of image matters (3d render, anime, photo, painting, etc) try to be specific and concise.",
-                            "5) If this is a known piece, include the artist.",
-                            "Example: a screencap of person doing things wearing outfit."
-                        ]
+                        "text": "@prompt"
                     },
                     {
                         "inlineData": {
