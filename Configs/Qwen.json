@@ -7,6 +7,6 @@
 	"prompt": [
 		"Taking into account any important datapoints such as type of content, characters, etc: I need a short caption for text to image training. Caption should include all primary concepts that make up the image. The image is from: @folder_name",
 		"An example of a good caption is: A sepia 3D CG screenshot from Sonic Trials, Sonic the Hedgehog wearing a crown, standing with his hands on his hips, set in a beautifully designed garden scene.",
-		"This example addresses the who, the setting, the composition, the image specifics, and noteworthy details of costume while being short and concise. Include all important elements of composition or subjects, do not use newline, or quotes. Text, numbers, and punctuation only."
+		"This example addresses the who, the setting, the composition, the image specifics, and noteworthy details of costume while being short and concise. Include all important elements of composition or subjects, do not use newline, or quotes. Text, numbers, and punctuation only. Avoid words that add nothing, such as featuring or protagonist."
 	]
 }
