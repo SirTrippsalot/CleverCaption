@@ -166,9 +166,9 @@ def run(image_path, folder_name, semaphore, folder_path):
             if response:
                 result_text = response
                 save_result_to_file(image_path, result_text)
-                debug_print("\n" + image_path + "\n" + result_text)
+                print("\n" + image_path + "\n" + result_text)
             else:
-                debug_print(f"No response for {image_path}")
+                print(f"No response for {image_path}")
 
         elif api_model == 'gemini-pro-vision':
             modified_payload = inject_prompt_into_payload(API_Payload, prompt_text)
@@ -186,9 +186,9 @@ def run(image_path, folder_name, semaphore, folder_path):
                 result = response.json()
                 result_text = result['candidates'][0]['content']['parts'][0]['text']
                 save_result_to_file(image_path, result_text)
-                debug_print("\n" + image_path + "\n" + result_text)
+                print("\n" + image_path + "\n" + result_text)
             else:
-                debug_print(f"Error: {response.status_code} - {response.text}")
+                print(f"Error: {response.status_code} - {response.text}")
 
         elif api_model == 'ooba':
             modified_payload = inject_prompt_into_payload(API_Payload, prompt_text)
@@ -203,9 +203,9 @@ def run(image_path, folder_name, semaphore, folder_path):
             if response.status_code == 200:
                 result = response.json()['results'][0]['text'].strip()
                 save_result_to_file(image_path, result)
-                debug_print("\n" + image_path + "\n" + result)
+                print("\n" + image_path + "\n" + result)
             else:
-                debug_print(f"Error: {response.status_code} - {response.text}")
+                print(f"Error: {response.status_code} - {response.text}")
 
         # Update progress_data
         progress_data['items_processed'] += 1
