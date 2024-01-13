@@ -157,6 +157,16 @@ def run(image_path, folder_name, semaphore, folder_path):
         debug_print(f"Processing image: {image_path}")
 
         image_name = os.path.splitext(os.path.basename(image_path))[0]
+        this_payload["messages"] = [
+            {
+                "role": "user",
+                "image_url": f"data:image/jpeg;base64,{base64_image}"
+            },
+            {
+                "role": "user",
+                "content": prompt + caption_start,
+            },
+        ]
         prompt_text = handle_prompt(prompt_template, folder_name, image_name, caption_start_template)
 
         if api_model == 'qwen':
