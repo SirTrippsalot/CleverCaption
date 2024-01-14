@@ -9,14 +9,13 @@ import requests
 import threading
 import tkinter as tk
 import torch
-from tkinter import filedialog
+from tkinter import filedialog, StringVar, OptionMenu
 from PIL import Image
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from UI_Progress import ProgressBarApp
 
-# Load Configuration from File
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
+global api_model, api_key, HOST, URI, prompt_template, API_Payload, semaphore
+global max_image_size, caption_start_template, max_concurrent_requests, httpx_timeout_value
 
 # Debug Mode Configuration
 debug_mode = False
@@ -25,26 +24,6 @@ debug_mode = False
 qwen_model = None
 qwen_tokenizer = None
 
-# API Configuration
-api_model = config.get('model', 'ooba')
-api_key = config.get('key', '')
-HOST = config.get('HOST', '')
-URI = config.get('URI_template', '').format(HOST=HOST, model=api_model, API_KEY=api_key)
-prompt_template = config.get('prompt', '')
-API_Payload = config.get('API_Payload', {})
-
-# Image Processing Configuration
-max_image_size = config.get('max_image_size', 1024)
-
-# Text Template Configuration
-caption_start_template = config.get('caption_start_template', '')
-
-# Network and Concurrency Configuration
-max_concurrent_requests = config.get('max_concurrent_requests', 1)
-httpx_timeout_value = config.get('httpx_timeout', 120.0)
-
-# Semaphore for Controlling Concurrency
-semaphore = threading.Semaphore(max_concurrent_requests)
 
 # Progress Tracking Data
 progress_data = {
@@ -54,6 +33,52 @@ progress_data = {
     'folders_completed': 0,
     'last_processed_file': ''
 }
+
+def initialize_from_config(config):
+    global api_model, api_key, HOST, URI, prompt_template, API_Payload, semaphore
+    global max_image_size, caption_start_template, max_concurrent_requests, httpx_timeout_value
+
+    api_model = config.get('model', 'ooba')
+    api_key = config.get('key', '')
+    HOST = config.get('HOST', '')
+    URI = config.get('URI_template', '').format(HOST=HOST, model=api_model, API_KEY=api_key)
+    prompt_template = config.get('prompt', '')
+    API_Payload = config.get('API_Payload', {})
+    max_image_size = config.get('max_image_size', 1024)
+    caption_start_template = config.get('caption_start_template', '')
+    max_concurrent_requests = config.get('max_concurrent_requests', 1)
+    httpx_timeout_value = config.get('httpx_timeout', 120.0)
+    
+    # Semaphore for Controlling Concurrency
+    semaphore = threading.Semaphore(max_concurrent_requests)
+
+def load_config(config_path):
+    with open(config_path, 'r') as config_file:
+        return json.load(config_file)
+
+def get_config_files(configs_dir):
+    return [f for f in os.listdir(configs_dir) if f.endswith('.json')]
+
+def select_config_gui(config_files):
+    root = tk.Tk()
+    root.title("Select Configuration File")
+
+    var = StringVar(root)
+    var.set(config_files[0])  # default value
+
+    option_menu = OptionMenu(root, var, *config_files)
+    option_menu.pack()
+
+    def on_select():
+        global config
+        config = load_config(os.path.join('Configs', var.get()))
+        root.destroy()
+
+    button = tk.Button(root, text="Select", command=on_select)
+    button.pack()
+
+    root.mainloop()
+    return config
 
 def current_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -157,16 +182,6 @@ def run(image_path, folder_name, semaphore, folder_path):
         debug_print(f"Processing image: {image_path}")
 
         image_name = os.path.splitext(os.path.basename(image_path))[0]
-        this_payload["messages"] = [
-            {
-                "role": "user",
-                "image_url": f"data:image/jpeg;base64,{base64_image}"
-            },
-            {
-                "role": "user",
-                "content": prompt + caption_start,
-            },
-        ]
         prompt_text = handle_prompt(prompt_template, folder_name, image_name, caption_start_template)
 
         if api_model == 'qwen':
@@ -201,10 +216,17 @@ def run(image_path, folder_name, semaphore, folder_path):
                 print(f"Error: {response.status_code} - {response.text}")
 
         elif api_model == 'ooba':
-            modified_payload = inject_prompt_into_payload(API_Payload, prompt_text)
-            base64_image = image_to_base64(image_path)
-            photodescription = f'<img src="data:image/jpeg;base64,{base64_image}">'
-            modified_payload['prompt'] = photodescription + "\n" + modified_payload['prompt']
+            modified_payload = API_Payload.copy()
+
+            if '@base64_image' not in modified_payload:
+                photodescription = f'<img src="data:image/jpeg;base64,{base64_image}">'
+                prompt_text = photodescription + "\n" + prompt_text
+            else:
+                base64_image = image_to_base64(image_path)
+                modified_payload = modified_payload.replace('@base64_image', base64_image)
+
+            modified_payload = inject_prompt_into_payload(modified_payload, prompt_text)
+
 
             timeout = httpx.Timeout(httpx_timeout_value)
             with httpx.Client(timeout=timeout) as client:
@@ -246,10 +268,28 @@ def process_queue():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process images in subfolders of a master folder.')
     parser.add_argument('--folder', type=str, help='Path to the master folder containing subfolders with images.')
+    parser.add_argument('--config', type=str, help='Path to the configuration JSON file.')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode for detailed logging.')
-
     args = parser.parse_args()
     debug_mode = args.debug
+
+    if args.config:
+        # Directly load the specified configuration file
+        config_path = args.config
+        if not os.path.exists(config_path):
+            print(f"Configuration file not found: {config_path}")
+            exit()
+        with open(config_path, 'r') as config_file:
+            config = json.load(config_file)
+    else:
+        # Load the configuration file using GUI
+        config_files = get_config_files('Configs')
+        if not config_files:
+            print("No config files found in 'Configs' directory. Exiting.")
+            exit()
+        config = select_config_gui(config_files)
+
+    initialize_from_config(config)
 
     if api_model == 'qwen':
         debug_print(f"Loading Qwen Model...")

@@ -1,4 +1,5 @@
 {
+    "model":"ooba",
     "_note_for_users": "Below please find the various app and API settings used by the program. Of note is the caption_start_template amd prompt. For either of these you can use replacement terms that will be proceesed at runtime. Currently supported are: @folder_name and @image_name.",
 	"HOST": "localhost:5000",
     "URI_template": "http://{HOST}/api/v1/generate",
