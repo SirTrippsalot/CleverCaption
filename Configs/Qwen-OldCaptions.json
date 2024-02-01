@@ -1,0 +1,15 @@
+{
+    "model": "qwen",
+    "_note_for_users": "Below please find the various app settings used by the program. Of note is the caption_start_template amd prompt. For either of these you can use replacement terms that will be proceesed at runtime. Currently supported are: @folder_name and @image_name.",
+    "max_image_size": 1024,
+    "caption_start_template": "",
+    "max_concurrent_requests": 1,
+	"prompt": [
+		"Taking into account any important datapoints such as type of content, characters, etc: I need a short caption for text to image training. Caption should include all primary concepts that make up the image. @folder_name",
+		"An example of a good caption includes: image style and type, artist or sorce, characters, outfit description, pose, other character details, and location details.",
+		"This example addresses the who, the setting, the composition, the image specifics, and noteworthy details of costume while being concise. Include all important elements of composition or subjects including mature content, and apparent age.",
+		"Do not use newline, or quotes. Text, numbers, and punctuation only. Avoid words that add nothing, such as featuring or protagonist.",
+		"Caption must contain image type (anime, painting, photo, etc) and a summary of the image.",
+		"Keep it concise and factual. Enhance this old caption: @old_caption"
+	]
+}

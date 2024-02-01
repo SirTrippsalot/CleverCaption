@@ -87,12 +87,20 @@ def debug_print(message):
     if debug_mode:
         print(f"{current_time()} - {message}")
         
+def read_old_caption(image_path):
+    old_caption_path = os.path.splitext(image_path)[0] + '.old.txt'
+    if os.path.exists(old_caption_path):
+        with open(old_caption_path, 'r', encoding='utf-8') as file:
+            return file.read().strip()
+    else:
+        return ''  # Return an empty string if the .old.txt file does not exist
+        
 def initialize_qwen_model():
     global qwen_model, qwen_tokenizer
 
     torch.manual_seed(1234)
     qwen_tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL-Chat", trust_remote_code=True)
-    qwen_model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL-Chat", device_map="cuda", trust_remote_code=True).eval()
+    qwen_model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL-Chat", device_map="cuda", trust_remote_code=True, bf16=True).eval()
     qwen_model.generation_config = GenerationConfig.from_pretrained("Qwen/Qwen-VL-Chat", trust_remote_code=True)
 
 def process_folder(folder_path, semaphore):
@@ -170,26 +178,41 @@ def save_result_to_file(image_path, result):
     with open(txt_file_path, 'w', encoding='utf-8') as txt_file:
         txt_file.write(result)
 
-def handle_prompt(prompt_template, folder_name, image_name, caption_start_template):
+def handle_prompt(prompt_template, folder_name, image_name, caption_start_template, image_path):
+    # Check if prompt_template is a list and convert it to string if necessary
     if isinstance(prompt_template, list):
         prompt_template = '\n'.join(prompt_template)
-    caption_start = caption_start_template.replace('@folder_name', folder_name).replace('@image_name', image_name)
-    prompt_text = prompt_template.replace('@folder_name', folder_name).replace('@image_name', image_name) + '\n' + caption_start
+
+    # Read the old caption from the corresponding .old.txt file
+    old_caption = read_old_caption(image_path)
+
+    # Replace placeholders in the prompt template
+    prompt_text = prompt_template.replace('@folder_name', folder_name) \
+                                 .replace('@image_name', image_name) \
+                                 .replace('@old_caption', old_caption)
+
+    # Handle caption start template
+    caption_start = caption_start_template.replace('@folder_name', folder_name) \
+                                          .replace('@image_name', image_name)
+
+    # Combine prompt text with caption start
+    prompt_text = prompt_text + '\n' + caption_start
     return prompt_text
+
 
 def run(image_path, folder_name, semaphore, folder_path):
     with semaphore:
         debug_print(f"Processing image: {image_path}")
 
         image_name = os.path.splitext(os.path.basename(image_path))[0]
-        prompt_text = handle_prompt(prompt_template, folder_name, image_name, caption_start_template)
+        prompt_text = handle_prompt(prompt_template, folder_name, image_name, caption_start_template, image_path)
 
         if api_model == 'qwen':
             debug_print(f"Sending to Qwen Model...")
             response = process_image_qwen(image_path, prompt_text)
 
             if response:
-                result_text = response
+                result_text = response.replace('"', '')
                 save_result_to_file(image_path, result_text)
                 print("\n" + image_path + "\n" + result_text)
             else:
