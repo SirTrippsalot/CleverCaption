@@ -24,7 +24,6 @@ debug_mode = False
 qwen_model = None
 qwen_tokenizer = None
 
-
 # Progress Tracking Data
 progress_data = {
     'items_processed': 0,
@@ -87,14 +86,7 @@ def debug_print(message):
     if debug_mode:
         print(f"{current_time()} - {message}")
         
-def read_old_caption(image_path):
-    old_caption_path = os.path.splitext(image_path)[0] + '.old.txt'
-    if os.path.exists(old_caption_path):
-        with open(old_caption_path, 'r', encoding='utf-8') as file:
-            return file.read().strip()
-    else:
-        return ''  # Return an empty string if the .old.txt file does not exist
-        
+ 
 def initialize_qwen_model():
     global qwen_model, qwen_tokenizer
 
@@ -102,6 +94,28 @@ def initialize_qwen_model():
     qwen_tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL-Chat", trust_remote_code=True)
     qwen_model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL-Chat", device_map="cuda", trust_remote_code=True, bf16=True).eval()
     qwen_model.generation_config = GenerationConfig.from_pretrained("Qwen/Qwen-VL-Chat", trust_remote_code=True)
+    
+# Function to load replacements from JSON
+def load_replacements(json_path='replacements.json'):
+    with open(json_path, 'r') as file:
+        replacements = json.load(file)
+    print("Configured Replacements:")
+    for key, value in replacements.items():
+        print(f"  {key} will be replaced with contents from {value}")
+    return replacements
+
+# Function to dynamically read and announce captions
+def read_caption(image_path, replacement_dict):
+    captions = {}
+    for key, modifier in replacement_dict.items():
+        caption_path = os.path.splitext(image_path)[0] + modifier
+        if os.path.exists(caption_path):
+            with open(caption_path, 'r', encoding='utf-8') as file:
+                caption_content = file.read().strip()
+                captions[key] = caption_content
+        else:
+            captions[key] = ''
+    return captions
 
 def process_folder(folder_path, semaphore):
     file_names = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
@@ -179,24 +193,20 @@ def save_result_to_file(image_path, result):
         txt_file.write(result)
 
 def handle_prompt(prompt_template, folder_name, image_name, caption_start_template, image_path):
-    # Check if prompt_template is a list and convert it to string if necessary
+    # Ensure prompt_template is a string
     if isinstance(prompt_template, list):
         prompt_template = '\n'.join(prompt_template)
+    prompt_text = prompt_template + '\n' + caption_start_template
+    
+    # Dynamically read captions based on global replacements
+    captions = read_caption(image_path, replacements)
 
-    # Read the old caption from the corresponding .old.txt file
-    old_caption = read_old_caption(image_path)
-
-    # Replace placeholders in the prompt template
-    prompt_text = prompt_template.replace('@folder_name', folder_name) \
-                                 .replace('@image_name', image_name) \
-                                 .replace('@old_caption', old_caption)
-
-    # Handle caption start template
-    caption_start = caption_start_template.replace('@folder_name', folder_name) \
-                                          .replace('@image_name', image_name)
-
-    # Combine prompt text with caption start
-    prompt_text = prompt_text + '\n' + caption_start
+    # Dynamically replace tokens in the prompt template with their captions
+    prompt_text = prompt_text.replace('@folder_name', folder_name) \
+                                 .replace('@image_name', image_name)
+    for token, caption in captions.items():
+        prompt_text = prompt_text.replace(token, caption)
+        
     return prompt_text
 
 
@@ -287,6 +297,10 @@ def get_folder_from_gui():
     
 def process_queue():
     progressBar.update_total_progress(progress_data['items_processed'])
+
+
+# Load replacements
+replacements = load_replacements()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process images in subfolders of a master folder.')

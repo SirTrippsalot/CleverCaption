@@ -5,11 +5,13 @@
     "caption_start_template": "",
     "max_concurrent_requests": 1,
 	"prompt": [
-		"Taking into account any important datapoints such as type of content, characters, etc: I need a short caption for text to image training. Caption should include all primary concepts that make up the image. @folder_name",
+		"Taking into account any important datapoints such as type of content, characters, etc: I need a short caption for text to image training. Caption should include all primary concepts that make up the image.",
 		"An example of a good caption includes: image style and type, artist or sorce, characters, outfit description, pose, other character details, and location details.",
 		"This example addresses the who, the setting, the composition, the image specifics, and noteworthy details of costume while being concise. Include all important elements of composition or subjects including mature content, and apparent age.",
 		"Do not use newline, or quotes. Text, numbers, and punctuation only. Avoid words that add nothing, such as featuring or protagonist.",
-		"Caption must contain image type (anime, painting, photo, etc) and a summary of the image.",
-		"Keep it concise and factual. Enhance this old caption: @old_caption"
+		"Caption must contain a summary of the image.",
+		"Keep it concise and factual. Limited Example: @old_caption",
+		"Contains characters: @faces",
+		"Continue this caption start: @folder_name"
 	]
 }
