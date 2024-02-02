@@ -192,22 +192,26 @@ def save_result_to_file(image_path, result):
     with open(txt_file_path, 'w', encoding='utf-8') as txt_file:
         txt_file.write(result)
 
-def handle_prompt(prompt_template, folder_name, image_name, caption_start_template, image_path):
-    # Ensure prompt_template is a string
-    if isinstance(prompt_template, list):
-        prompt_template = '\n'.join(prompt_template)
-    prompt_text = prompt_template + '\n' + caption_start_template
+
+def process_template(template, folder_name, image_name, caption_start_template, image_path, is_prompt=False):
+    if isinstance(template, list):
+        template = '\n'.join(template)
+        
+    if is_prompt:
+        template_text = template + '\n' + caption_start_template
+    else:
+        template_text = template 
     
     # Dynamically read captions based on global replacements
     captions = read_caption(image_path, replacements)
 
-    # Dynamically replace tokens in the prompt template with their captions
-    prompt_text = prompt_text.replace('@folder_name', folder_name) \
+    # Dynamically replace tokens in the template with their captions
+    template_text = template_text.replace('@folder_name', folder_name) \
                                  .replace('@image_name', image_name)
     for token, caption in captions.items():
-        prompt_text = prompt_text.replace(token, caption)
+        template_text = template_text.replace(token, caption)
         
-    return prompt_text
+    return template_text
 
 
 def run(image_path, folder_name, semaphore, folder_path):
@@ -215,14 +219,16 @@ def run(image_path, folder_name, semaphore, folder_path):
         debug_print(f"Processing image: {image_path}")
 
         image_name = os.path.splitext(os.path.basename(image_path))[0]
-        prompt_text = handle_prompt(prompt_template, folder_name, image_name, caption_start_template, image_path)
+        prompt_text = process_template(prompt_template, folder_name, image_name, caption_start_template, image_path, is_prompt=True)
+        prepend_template = config.get('prepend', '') 
+        prepend_text = process_template(prepend_template, folder_name, image_name, '', image_path, is_prompt=False)
 
         if api_model == 'qwen':
             debug_print(f"Sending to Qwen Model...")
             response = process_image_qwen(image_path, prompt_text)
 
             if response:
-                result_text = response.replace('"', '')
+                result_text = prepend_text + response.replace('"', '')  # Prepend text added here
                 save_result_to_file(image_path, result_text)
                 print("\n" + image_path + "\n" + result_text)
             else:
